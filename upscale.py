@@ -204,12 +204,13 @@ def upscale_image(
     effective_scale = model_scale * downscale
     ow, oh = int(round(w * effective_scale)), int(round(h * effective_scale))
 
+    dtype = torch.float16 if device.type == "cuda" else torch.float32
     x = (
         torch.from_numpy(img_rgb)
         .to(device, non_blocking=True)
         .permute(2, 0, 1)
         .unsqueeze(0)
-        .half()
+        .to(dtype)
         .div_(255.0)
     )
 
@@ -321,6 +322,8 @@ def upscale_video(
     i = 0
     last_print = t0
 
+    dtype = torch.float16 if device.type == "cuda" else torch.float32
+
     with torch.inference_mode():
         while True:
             arr = in_q.get()
@@ -331,7 +334,7 @@ def upscale_video(
                 .to(device, non_blocking=True)
                 .permute(2, 0, 1)
                 .unsqueeze(0)
-                .half()
+                .to(dtype)
                 .div_(255.0)
             )
 
