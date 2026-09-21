@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelFrame — Local 4K AI Video & Image Upscaler</title>
+  <style>
+    :root {
+      --bg: #070a12;
+      --card-bg: rgba(15, 22, 36, 0.85);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #10b981;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg) 80%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1020px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .badge-gpu {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.9rem;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 9999px;
+      font-size: 0.825rem;
+      color: #34d399;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1.2rem;
+      padding: 1.75rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.35rem;
+      border-radius: 0.75rem;
+      width: fit-content;
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.6rem 1.4rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 1rem;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.25s ease;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.08);
+      transform: scale(1.005);
+    }
+
+    .dropzone svg {
+      width: 52px;
+      height: 52px;
+      stroke: var(--primary);
+      margin-bottom: 0.75rem;
+    }
+
+    .dropzone h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.35rem;
+      font-weight: 700;
+    }
+
+    .dropzone p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select, input[type="text"] {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.7rem 0.9rem;
+      border-radius: 0.6rem;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+    }
+
+    .range-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary);
+    }
+
+    .val-badge {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.4rem;
+      min-width: 42px;
+      text-align: center;
+    }
+
+    .btn-start {
+      width: 100%;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      border: none;
+      color: white;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      margin-top: 1.75rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn-start:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
+    }
+
+    .btn-start:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .progress-box {
+      margin-top: 1.75rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366f1, #a855f7, #10b981);
+      border-radius: 9999px;
+      transition: width 0.25s ease;
+    }
+
+    .metrics-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .terminal-box {
+      background: #030712;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 0.6rem;
+      padding: 0.85rem 1.1rem;
+      font-family: var(--font-mono);
+      font-size: 0.825rem;
+      color: #94a3b8;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 0.5rem;
+    }
+
+    .result-box {
+      display: none;
+      margin-top: 1.75rem;
+      border-top: 1px solid var(--card-border);
+      padding-top: 1.5rem;
+    }
+
+    .result-box h3 {
+      color: #34d399;
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      text-decoration: none;
+      padding: 0.8rem 1.4rem;
+      border-radius: 0.6rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-top: 0.85rem;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+      transition: transform 0.2s;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-1px);
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: auto;
+      padding-top: 2rem;
+    }
+
+    footer a {
+      color: #818cf8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>🎬 ReelFrame</h1>
+        <p>Local 4K AI Video & Image Super-Resolution &bull; Author: <strong>Raliq Hidayat BM3</strong></p>
+      </div>
+      <div class="badge-gpu" id="gpu-badge">
+        <span class="status-dot"></span>
+        <span id="gpu-name">Detecting GPU...</span>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="setMode('video')">Video (Reels / MP4 / MOV)</button>
+        <button class="tab-btn" onclick="setMode('image')">Image (Photo / PNG / JPG)</button>
+      </div>
+
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <h3 id="file-title">Drop your video or photo here</h3>
+        <p id="file-subtitle">Fast 4K Upscale with Real-ESRGAN & NVENC &bull; Click to Browse</p>
+        <input type="file" id="file-input" style="display: none;" onchange="handleFileSelected(event)">
+      </div>
+
+      <div class="settings-grid">
+        <div class="form-group">
+          <label>Social & Cinema Preset</label>
+          <select id="preset-select" onchange="applyPreset(this.value)">
+            <option value="reels-4k">Instagram Reels / TikTok (9:16 Vertical 4K)</option>
+            <option value="cinema-4k">YouTube / Cinema (16:9 Standard 4K)</option>
+            <option value="photo-crisp">Portrait & Photo Sharp Detail</option>
+            <option value="anime">Anime & 2D Illustration</option>
+            <option value="custom">Custom Configuration</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>AI Model</label>
+          <select id="model-select">
+            <option value="realesr-general-x4v3.pth">realesr-general-x4v3 (Fast General - Recommended)</option>
+            <option value="RealESRGAN_x4plus.pth">RealESRGAN_x4plus (High Detail Photo)</option>
+            <option value="RealESRGAN_x4plus_anime_6B.pth">RealESRGAN_x4plus_anime_6B (Anime / Vector)</option>
+            <option value="RealESRGAN_x2plus.pth">RealESRGAN_x2plus (Restoration)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Output Scale</label>
+          <select id="scale-select">
+            <option value="2x">2x Upscale (1080p &rarr; 4K UHD)</option>
+            <option value="4x">4x Upscale (720p &rarr; 4K / 1080p &rarr; 8K)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>4GB VRAM Safe Tiling (RTX 3050)</label>
+          <select id="tile-select">
+            <option value="512">512px (Guaranteed Safe - Zero OOM)</option>
+            <option value="400">400px (Extra Conservative)</option>
+            <option value="0">Full Frame (Needs 8GB+ VRAM)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>NVENC Quality (CQ)</label>
+          <div class="range-group">
+            <input type="range" id="cq-slider" min="16" max="28" value="20" oninput="document.getElementById('cq-val').textContent = this.value">
+            <span class="val-badge" id="cq-val">20</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-start" id="btn-start" onclick="startUpscale()" disabled>
+        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Select File to Start Upscaling
+      </button>
+
+      <div class="progress-box" id="progress-box">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-bar"></div>
+        </div>
+        <div class="metrics-row">
+          <span id="metric-frames">Frame: 0 / 0</span>
+          <span id="metric-pct">0.0%</span>
+          <span id="metric-speed">0.00 fps</span>
+          <span id="metric-eta">ETA: --</span>
+        </div>
+        <div class="terminal-box" id="terminal-box">Ready.</div>
+      </div>
+
+      <div class="result-box" id="result-box">
+        <h3>🎉 Upscaling Complete!</h3>
+        <p id="result-info">Your 4K master is ready.</p>
+        <a id="btn-download-file" class="btn-download" href="#" download>
+          ⬇️ Download Upscaled 4K Master
+        </a>
+      </div>
+    </div>
+
+    <footer>
+      <strong>ReelFrame</strong> &bull; Crafted with PyTorch, CUDA, and NVENC by <a href="https://github.com/kouji999/ReelFrame" target="_blank">Raliq Hidayat BM3</a>
+    </footer>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let currentMode = 'video';
+    let pollInterval = null;
+
+    fetch('/api/system-info')
+      .then(res => res.json())
+      .then(data => {
+        const badge = document.getElementById('gpu-name');
+        if (data.cuda_available) {
+          badge.textContent = `${data.gpu_name} (${data.vram_gb} GB VRAM)`;
+        } else {
+          badge.textContent = 'CPU Mode';
+          document.getElementById('gpu-badge').style.background = 'rgba(239, 68, 68, 0.15)';
+          document.getElementById('gpu-badge').style.color = '#f87171';
+        }
+      })
+      .catch(() => {
+        document.getElementById('gpu-name').textContent = 'GPU Ready';
+      });
+
+    function applyPreset(preset) {
+      const modelSelect = document.getElementById('model-select');
+      const scaleSelect = document.getElementById('scale-select');
+      const cqSlider = document.getElementById('cq-slider');
+      const cqVal = document.getElementById('cq-val');
+
+      if (preset === 'reels-4k') {
+        modelSelect.value = 'realesr-general-x4v3.pth';
+        scaleSelect.value = '2x';
+        cqSlider.value = 19;
+        cqVal.textContent = '19';
+      } else if (preset === 'cinema-4k') {
+        modelSelect.value = 'realesr-general-x4v3.pth';
+        scaleSelect.value = '2x';
+        cqSlider.value = 18;
+        cqVal.textContent = '18';
+      } else if (preset === 'photo-crisp') {
+        modelSelect.value = 'RealESRGAN_x4plus.pth';
+        scaleSelect.value = '4x';
+        cqSlider.value = 16;
+        cqVal.textContent = '16';
+      } else if (preset === 'anime') {
+        modelSelect.value = 'RealESRGAN_x4plus_anime_6B.pth';
+        scaleSelect.value = '2x';
+        cqSlider.value = 20;
+        cqVal.textContent = '20';
+      }
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      const fileInput = document.getElementById('file-input');
+      const subtitle = document.getElementById('file-subtitle');
+      if (mode === 'video') {
+        fileInput.accept = "video/mp4,video/quicktime,video/x-matroska,video/webm";
+        subtitle.textContent = "Fast 4K Upscale with Real-ESRGAN & NVENC • Click to Browse";
+      } else {
+        fileInput.accept = "image/png,image/jpeg,image/webp,image/bmp";
+        subtitle.textContent = "Ultra-crisp 4K photo restoration & enlargement • Click to Browse";
+      }
+    }
+
+    function handleFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      selectedFile = file;
+
+      document.getElementById('file-title').textContent = file.name;
+      document.getElementById('file-subtitle').textContent = `Size: ${(file.size / (1024 * 1024)).toFixed(2)} MB • Ready to upscale`;
+      const btn = document.getElementById('btn-start');
+      btn.disabled = false;
+      btn.textContent = `Upscale ${currentMode === 'video' ? 'Video' : 'Photo'} to 4K Master`;
+    }
+
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        document.getElementById('file-input').files = e.dataTransfer.files;
+        handleFileSelected({ target: { files: e.dataTransfer.files } });
+      }
+    });
+
+    async function startUpscale() {
+      if (!selectedFile) return;
+
+      const btn = document.getElementById('btn-start');
+      btn.disabled = true;
+      btn.textContent = "Processing... Keeping GPU Pegged";
+
+      const progressBox = document.getElementById('progress-box');
+      progressBox.style.display = 'flex';
+      document.getElementById('result-box').style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('model', document.getElementById('model-select').value);
+      formData.append('scale', document.getElementById('scale-select').value);
+      formData.append('tile', document.getElementById('tile-select').value);
+      formData.append('cq', document.getElementById('cq-slider').value);
+
+      try {
+        const response = await fetch('/api/upscale', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.status === 'started') {
+          pollJobProgress(data.job_id);
+        } else {
+          alert('Error: ' + data.message);
+          btn.disabled = false;
+          btn.textContent = "Start Upscaling";
+        }
+      } catch (err) {
+        alert('Request failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = "Start Upscaling";
+      }
+    }
+
+    function pollJobProgress(jobId) {
+      if (pollInterval) clearInterval(pollInterval);
+
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/job/${jobId}`);
+          const job = await res.json();
+
+          const pct = job.progress || 0;
+          document.getElementById('progress-bar').style.width = `${pct}%`;
+          document.getElementById('metric-pct').textContent = `${pct.toFixed(1)}%`;
+          document.getElementById('metric-frames').textContent = `Frame: ${job.current_frame || 0} / ${job.total_frames || '?'}`;
+          document.getElementById('metric-speed').textContent = `${(job.fps || 0).toFixed(2)} fps`;
+          document.getElementById('metric-eta').textContent = `ETA: ${job.eta ? Math.round(job.eta) + 's' : '--'}`;
+
+          if (job.log) {
+            const terminal = document.getElementById('terminal-box');
+            terminal.textContent = job.log;
+            terminal.scrollTop = terminal.scrollHeight;
+          }
+
+          if (job.status === 'completed') {
+            clearInterval(pollInterval);
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-start').textContent = "Upscale Another Clip";
+            document.getElementById('result-box').style.display = 'block';
+            document.getElementById('result-info').textContent = `Master saved: ${job.output_filename}`;
+            document.getElementById('btn-download-file').href = `/api/download/${jobId}`;
+          } else if (job.status === 'error') {
+            clearInterval(pollInterval);
+            alert('Upscaling error: ' + job.error);
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-start').textContent = "Retry";
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 700);
+    }
+  </script>
+</body>
+</html>
